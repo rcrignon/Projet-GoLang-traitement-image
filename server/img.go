@@ -1,4 +1,4 @@
-package img
+package main
 
 import (
 	"fmt"
