@@ -1,8 +1,0 @@
-<<<<<<< HEAD
-=======
-<<<<<<< Updated upstream
-test Ilona
-=======
-Ilona test github
->>>>>>> Stashed changes
->>>>>>> 118c847cb48460b0a693e7f2ac4cf11163ad44b8
