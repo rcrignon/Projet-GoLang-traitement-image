@@ -5,51 +5,60 @@ import (
 	"fmt"
 	"image/color"
 	"math"
+	"runtime"
 	"sync"
 	"time"
 )
 
-var wg sync.WaitGroup
+var wg3 sync.WaitGroup
 
 func main(){
 	start:=time.Now()
-	test := img.Img {Filepath: "filepath/........../......../......"}
+	numCPU := runtime.NumCPU()
+	test := img.Img{Filepath: "filepath/......../........."}
 	m := test.ImageToTab()
-	m2:=make([][]color.Color, len(m))
-	for i:=0; i<len(m); i++{
-		m2[i]=make([]color.Color, len(m[0]))
+	m2 := make([][]color.Color, len(m))
+	for i := 0; i < len(m); i++ {
+		m2[i] = make([]color.Color, len(m[0]))
 	}
-	sigma:=10.0
+	sigma := 10.0
 	gauss := matGauss(sigma)
-	for i:=0; i<len(m); i++{
-		wg.Add(1)
+	chunkSize := (len(m) + numCPU - 1) / numCPU
+	for i := 0; i < len(m); i += chunkSize {
+		end := i + chunkSize
+		if end > len(m) {
+			end = len(m)
+		}
+		wg3.Add(1)
 		go func(i int, m [][]color.Color) {
-			defer wg.Done()
-			for j:=0; j<len(m[0]); j++{
-				mat := matrice7(i, j, m)
-				coefpdR := 0.0
-				coefpdG := 0.0
-				coefpdB := 0.0
-				coefg := 0.0
-				for k := 0; k < len(mat); k++ {
-					for v := 0; v < len(mat[0]); v++ {
-						if mat[k][v] != nil {
-							r, g, b, _ := mat[k][v].RGBA()
-							coef := gauss[k][v]
-							coefg = coefg + coef
-							coefpdR = coefpdR + coef*(float64(r)/257)
-							coefpdG = coefpdG + coef*(float64(g)/257)
-							coefpdB = coefpdB + coef*(float64(b)/257)
-						} else {
-							continue
+			defer wg3.Done()
+			for u := i; u < end; u++ {
+				for j := 0; j < len(m[0]); j++ {
+					mat := matrice7(u, j, m)
+					coefpdR := 0.0
+					coefpdG := 0.0
+					coefpdB := 0.0
+					coefg := 0.0
+					for k := 0; k < len(mat); k++ {
+						for v := 0; v < len(mat[0]); v++ {
+							if mat[k][v] != nil {
+								r, g, b, _ := mat[k][v].RGBA()
+								coef := gauss[k][v]
+								coefg = coefg + coef
+								coefpdR = coefpdR + coef*(float64(r)/257)
+								coefpdG = coefpdG + coef*(float64(g)/257)
+								coefpdB = coefpdB + coef*(float64(b)/257)
+							} else {
+								continue
+							}
 						}
 					}
+					m2[u][j] = color.RGBA{R: uint8(coefpdR / coefg), G: uint8(coefpdG / coefg), B: uint8(coefpdB / coefg), A: 255}
 				}
-				m2[i][j] = color.RGBA{R: uint8(coefpdR / coefg), G: uint8(coefpdG / coefg), B: uint8(coefpdB / coefg), A: 255}
 			}
-		}(i,m)
+		}(i, m)
 	}
-	wg.Wait()
+	wg3.Wait()
 	_ = img.TabToImage("filepath/......../.........", m2)
 	fmt.Println(time.Since(start))
 

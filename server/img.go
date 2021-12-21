@@ -8,6 +8,7 @@ import (
 	"image/png"
 	"log"
 	"os"
+	"runtime"
 	"sync"
 )
 var wg sync.WaitGroup
@@ -27,22 +28,31 @@ func GetImage(filepath string) (image.Image, image.Point, error) {
 	return i, i.Bounds().Size(), err
 }
 
-func (im Img) ImageToTab() [][]color.Color{
-	i, p, _ :=GetImage(im.Filepath)
+func (im Img) ImageToTab() [][]color.Color {
+	numCPU := runtime.NumCPU()
+	i, p, _ := GetImage(im.Filepath)
 	var tab = make([][]color.Color, p.X)
-	for k:=0; k<p.X; k++{
-		var y []color.Color
-		wg.Add(1)
-		go func(k int, ligne int, y []color.Color) {
-			defer wg.Done()
-			for j:=0; j<ligne;j++ {
-				y = append(y, i.At(k, j))
-			}
-			tab[k]=y
-
-		}(k,p.Y,y)
-
+	for t:=0; t<p.X; t++{
+		tab[t]=make([]color.Color, p.Y)
 	}
+	chunkSize := (len(tab) + numCPU - 1) / numCPU
+	for v := 0; v < len(tab); v += chunkSize {
+		end := v + chunkSize
+		if end > len(tab) {
+			end = len(tab)
+		}
+		wg.Add(1)
+		go func(v int, tab [][]color.Color) {
+			defer wg.Done()
+			for k := v; k < end; k++ {
+				for j := 0; j < p.Y; j++ {
+					tab[k][j] = i.At(k, j)
+				}
+			}
+
+		}(v, tab)
+	}
+	wg.Wait()
 	return tab
 }
 
